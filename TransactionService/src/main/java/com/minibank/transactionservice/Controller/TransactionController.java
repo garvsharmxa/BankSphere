@@ -4,6 +4,7 @@ import com.minibank.transactionservice.DTO.TransactionDto;
 import com.minibank.transactionservice.Entity.Transaction;
 import com.minibank.transactionservice.Service.TransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class TransactionController {
 
     // CREATE A NEW TRANSACTION (DEPOSIT / WITHDRAWAL)
     @PostMapping("/create/{accountId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')")
     public TransactionDto createTransaction(
             @PathVariable UUID accountId,
             @RequestBody Transaction transaction
@@ -33,6 +35,7 @@ public class TransactionController {
 
     // GET ALL TRANSACTIONS
     @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<TransactionDto> getAllTransactions() {
         return transactionService.getAllTransactions();
     }
