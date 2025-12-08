@@ -4,6 +4,7 @@ import com.minibank.accountservice.DTO.AccountDto;
 import com.minibank.accountservice.Entity.Account;
 import com.minibank.accountservice.Services.AccountService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,12 +19,14 @@ public class AccountController {
 
     // CREATE ACCOUNT
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')")
     public AccountDto createAccount(@RequestBody Account account) {
         return accountService.createAccount(account);
     }
 
     // GET ACCOUNT BY ID
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')")
     public AccountDto getAccountById(@PathVariable UUID id) {
         return accountService.getAccountById(id);
     }
@@ -36,6 +39,7 @@ public class AccountController {
 
     // GET ALL ACCOUNTS
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public List<AccountDto> getAllAccounts() {
         return accountService.getAllAccounts();
     }
@@ -77,6 +81,7 @@ public class AccountController {
 
     // DELETE ACCOUNT
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public String deleteAccount(@PathVariable UUID id) {
         accountService.deleteAccount(id);
         return "Account deleted successfully!";
