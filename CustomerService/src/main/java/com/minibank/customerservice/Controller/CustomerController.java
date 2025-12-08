@@ -7,6 +7,7 @@ import com.minibank.customerservice.Service.CustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework. http.HttpStatus;
 import org.springframework. http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class CustomerController {
     // CREATE CUSTOMER
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')")
     public CustomerDTO createCustomer(@RequestBody CustomerDTO dto) {
         Customer saved = customerService.createCustomer(
                 CustomerMapper.toEntity(dto)
@@ -31,6 +33,7 @@ public class CustomerController {
 
     // GET ALL CUSTOMERS
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public List<CustomerDTO> getAllCustomers() {
         return customerService.getAllCustomers()
                 .stream()
@@ -99,6 +102,7 @@ public class CustomerController {
 
     // DELETE CUSTOMER
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteCustomer(@PathVariable UUID id) {
         customerService.deleteCustomer(id);
         return ResponseEntity. ok("Customer deleted successfully");

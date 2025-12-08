@@ -3,12 +3,14 @@ package com.minibank.accountservice.Services;
 import com.minibank.accountservice.Config.AesEncryptor;
 import com.minibank.accountservice.DTO.AccountDto;
 import com.minibank.accountservice.Entity.Account;
+import com.minibank.accountservice.Event.AccountEvent;
 import com.minibank.accountservice.Exception.AccountNotFoundException;
 import com.minibank.accountservice.Exception.CustomerNotFoundException;
 import com.minibank.accountservice.Exception.KycNotVerifiedException;
 import com.minibank.accountservice.Feign.CustomerInterface;
 import com.minibank.accountservice.Feign.KycInterface;
 import com.minibank.accountservice.Mapper.AccountMapper;
+import com.minibank.accountservice.Producer.AccountEventProducer;
 import com.minibank.accountservice.Repository.AccountRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,6 +33,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final CustomerInterface customerInterface;
     private final KycInterface kycInterface;   // <-- NEW (KYC microservice)
+    private final AccountEventProducer eventProducer;
 
     @Autowired
     Environment environment;
@@ -80,6 +84,20 @@ public class AccountService {
         log.info("Creating account for customer: {} with account number {}", customerId, rawAccountNumber);
 
         Account saved = accountRepository.save(account);
+
+        // Send Kafka event for account creation
+        AccountEvent event = new AccountEvent(
+                saved.getId(),
+                saved.getCustomerId(),
+                rawAccountNumber,
+                saved.getAccountType().toString(),
+                saved.getAccountBalance(),
+                "CREATED",
+                LocalDateTime.now(),
+                null // Email will be fetched by consumer from customer service
+        );
+        eventProducer.sendAccountCreatedEvent(event);
+        eventProducer.sendEmailNotificationEvent(event);
 
         // DECRYPT for response
         AccountDto dto = AccountMapper.toDto(saved);
@@ -166,6 +184,19 @@ public class AccountService {
         account.setAccountBalance(account.getAccountBalance() + amount);
         Account saved = accountRepository.save(account);
 
+        // Send Kafka event for deposit
+        AccountEvent event = new AccountEvent(
+                saved.getId(),
+                saved.getCustomerId(),
+                AesEncryptor.decrypt(saved.getAccountNumber()),
+                saved.getAccountType().toString(),
+                amount,
+                "DEPOSIT",
+                LocalDateTime.now(),
+                null
+        );
+        eventProducer.sendEmailNotificationEvent(event);
+
         return mapWithDecryption(saved);
     }
 
@@ -189,6 +220,19 @@ public class AccountService {
 
         account.setAccountBalance(account.getAccountBalance() - amount);
         Account saved = accountRepository.save(account);
+
+        // Send Kafka event for withdrawal
+        AccountEvent event = new AccountEvent(
+                saved.getId(),
+                saved.getCustomerId(),
+                AesEncryptor.decrypt(saved.getAccountNumber()),
+                saved.getAccountType().toString(),
+                amount,
+                "WITHDRAW",
+                LocalDateTime.now(),
+                null
+        );
+        eventProducer.sendEmailNotificationEvent(event);
 
         return mapWithDecryption(saved);
     }
@@ -247,6 +291,20 @@ public class AccountService {
             throw new IllegalStateException("Cannot delete account with non-zero balance.");
 
         log.warn("Deleting account {}", id);
+        
+        // Send Kafka event for account deletion
+        AccountEvent event = new AccountEvent(
+                account.getId(),
+                account.getCustomerId(),
+                AesEncryptor.decrypt(account.getAccountNumber()),
+                account.getAccountType().toString(),
+                account.getAccountBalance(),
+                "DELETED",
+                LocalDateTime.now(),
+                null
+        );
+        eventProducer.sendAccountDeletedEvent(event);
+        
         accountRepository.deleteById(id);
     }
 

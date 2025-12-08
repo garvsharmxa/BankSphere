@@ -4,6 +4,7 @@ import com.minibank.cardservice.DTO.CardDto;
 import com.minibank.cardservice.Entity.Card;
 import com.minibank.cardservice.Service.CardService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class CardController {
 
     // CREATE CARD
     @PostMapping("/create")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')")
     public CardDto createCard(@RequestBody CardDto cardDto) {
         return cardService.createCard(cardDto);
     }
@@ -30,6 +32,7 @@ public class CardController {
 
     // GET ALL CARDS
     @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<CardDto> getAllCards() {
         return cardService.getAllCards();
     }
@@ -71,6 +74,7 @@ public class CardController {
 
     // DELETE CARD
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public String deleteCard(@PathVariable UUID id) {
         cardService.deleteCard(id);
         return "Card deleted successfully!";
